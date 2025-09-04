@@ -102,15 +102,30 @@ class AutoClicker:
                 chromium_options.binary_location = chromium_path
                 
                 # 添加额外的稳定性选项
-                chromium_options.add_argument("--remote-debugging-port=9222")
                 chromium_options.add_argument("--disable-extensions")
                 chromium_options.add_argument("--disable-plugins")
-                chromium_options.add_argument("--disable-web-security")
-                chromium_options.add_argument("--allow-running-insecure-content")
+                chromium_options.add_argument("--disable-dev-shm-usage")
+                chromium_options.add_argument("--disable-gpu")
+                chromium_options.add_argument("--no-first-run")
+                chromium_options.add_argument("--disable-default-apps")
+                chromium_options.add_argument("--disable-background-timer-throttling")
+                chromium_options.add_argument("--disable-renderer-backgrounding")
+                chromium_options.add_argument("--disable-backgrounding-occluded-windows")
                 
-                # 使用 webdriver-manager 自动管理 ChromeDriver
-                logger.info("使用 webdriver-manager 自动获取兼容的 ChromeDriver...")
-                service = Service(ChromeDriverManager().install())
+                # 对于便携式 Chromium 112，使用指定版本的 ChromeDriver
+                if "browsers/chromium" in chromium_path:
+                    logger.info("检测到便携式 Chromium 112，使用匹配的 ChromeDriver...")
+                    try:
+                        # 尝试使用 ChromeDriver 112.x 版本
+                        service = Service(ChromeDriverManager(version="112.0.5615.49").install())
+                    except Exception as e:
+                        logger.warning(f"无法获取指定版本的 ChromeDriver: {e}")
+                        logger.info("使用默认版本的 ChromeDriver...")
+                        service = Service(ChromeDriverManager().install())
+                else:
+                    # 系统浏览器使用默认版本
+                    logger.info("使用 webdriver-manager 自动获取兼容的 ChromeDriver...")
+                    service = Service(ChromeDriverManager().install())
                 
                 driver = webdriver.Chrome(service=service, options=chromium_options)
                 logger.info("✅ Chromium 启动成功")
