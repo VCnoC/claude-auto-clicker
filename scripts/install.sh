@@ -50,38 +50,10 @@ check_and_install_browser() {
     echo "   2) 系统级 Chromium - 通过包管理器安装"
     echo "   3) 跳过安装 - 稍后手动安装"
     echo ""
-    
-    read -p "请选择安装方式 [1/2/3]: " choice
-    
-    case $choice in
-        1)
-            echo "📦 将在安装完成后下载便携式 Chromium..."
-            echo "✅ 便携式 Chromium 优势：完全隔离，卸载时一并清理"
-            INSTALL_PORTABLE_CHROMIUM=true
-            ;;
-        2)
-            if command -v apt &> /dev/null; then
-                echo "📦 正在安装系统级 Chromium..."
-                echo "💭 Chromium 优势：轻量、开源、适合自动化"
-                
-                if sudo apt update && sudo apt install -y chromium-browser; then
-                    echo "✅ Chromium 安装成功！"
-                    echo "📏 安装大小：约 80MB"
-                    return 0
-                else
-                    echo "❌ Chromium 自动安装失败"
-                    echo "🔧 请手动安装: sudo apt install chromium-browser"
-                fi
-            else
-                echo "❌ 系统不支持 apt 包管理器"
-                echo "请手动安装浏览器或选择便携式安装"
-            fi
-            ;;
-        3|*)
-            echo "⏭️  跳过浏览器安装"
-            echo "⚠️  请确保稍后安装浏览器，否则无法正常运行"
-            ;;
-    esac
+    echo "✅ 已自动选择: 1) 便携式 Chromium（默认）"
+    echo "📦 将在安装完成后下载便携式 Chromium..."
+    echo "✅ 便携式 Chromium 优势：完全隔离，卸载时一并清理"
+    INSTALL_PORTABLE_CHROMIUM=true
     
     echo ""
     echo "📖 浏览器安装指南："
@@ -126,28 +98,29 @@ check_and_install_venv() {
 }
 
 # 创建本地虚拟环境（推荐）
-read -p "是否要创建本地虚拟环境？(y/n): " create_venv
-if [[ $create_venv =~ ^[Yy]$ ]]; then
-    echo "📦 创建本地虚拟环境..."
-    
-    # 检查并安装 venv 支持
-    check_and_install_venv
-    
-    # 在项目目录内创建虚拟环境
+echo "📦 创建本地虚拟环境...（自动）"
+
+# 检查并安装 venv 支持
+check_and_install_venv
+
+# 若已存在则直接激活，否则创建后激活
+if [ -d ./venv ]; then
+    source ./venv/bin/activate
+    echo "✅ 本地虚拟环境已存在并激活"
+    echo "📁 虚拟环境位置: $(pwd)/venv"
+    echo "export CLAUDE_AUTO_CLICKER_VENV=$(pwd)/venv" > .env
+    echo "✅ 环境变量已保存到 .env 文件"
+else
     if python3 -m venv ./venv; then
         source ./venv/bin/activate
         echo "✅ 本地虚拟环境已创建并激活"
         echo "📁 虚拟环境位置: $(pwd)/venv"
-        
-        # 记录虚拟环境路径
         echo "export CLAUDE_AUTO_CLICKER_VENV=$(pwd)/venv" > .env
         echo "✅ 环境变量已保存到 .env 文件"
     else
         echo "❌ 虚拟环境创建失败"
         echo "继续使用系统环境安装..."
     fi
-else
-    echo "⚠️  将使用系统 Python 环境"
 fi
 
 # 安装依赖
@@ -373,3 +346,8 @@ fi
 
 echo ""
 echo "✨ 绿色软件模式：删除文件夹即可完全卸载！"
+
+# 引导用户立即配置登录凭据
+echo ""
+echo "🔐 立即配置登录凭据"
+./claude-auto-clicker login || true

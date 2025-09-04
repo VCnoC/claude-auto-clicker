@@ -21,27 +21,17 @@ def cli():
 @click.option('--username', '-u', help='用户名')
 @click.option('--password', '-p', help='密码')
 def login(username, password):
-    """设置登录凭据（支持交互或参数传入）"""
+    """设置登录凭据（默认总是交互覆盖，亦支持 -u/-p 传参）"""
     click.echo("设置登录凭据")
     click.echo("=" * 30)
 
-    # 已有配置时提示覆盖
-    current_user, _ = config_manager.get_login_credentials()
-
+    # 若未通过参数提供，则交互式输入（总是提示，覆盖旧配置）
     if not username:
-        default_user = current_user if current_user else None
-        if default_user:
-            click.echo(f"当前已配置用户名: {default_user}")
-            if not click.confirm("是否更新登录凭据？"):
-                click.echo("已取消")
-                return
-        username = click.prompt("请输入用户名", default=default_user, show_default=False)
-
+        username = click.prompt("请输入用户名")
     if password is None:
         try:
             password = getpass.getpass("请输入密码: ")
         except Exception:
-            # 某些环境下 getpass 可能不可用，回退到明文输入
             password = click.prompt("请输入密码", hide_input=True)
 
     if not username or not password:

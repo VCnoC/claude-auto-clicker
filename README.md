@@ -23,30 +23,39 @@
 
 - Python 3.7 或更高版本
 - Claude Code (必须先安装)
-- Chromium 浏览器（推荐，轻量级）或 Chrome 浏览器
+- 无需预装 Chromium/Chrome —— 安装脚本会自动下载便携版浏览器与匹配的 ChromeDriver 到项目目录
 
 ## 快速安装
 
-### Linux/Mac
+### Linux/WSL/Mac（全自动）
 
 ```bash
 # 下载项目
 git clone https://github.com/your-username/claude-auto-clicker.git
 cd claude-auto-clicker
 
-# 运行安装脚本
+# 一键安装（全自动）：
+# - 自动创建并激活本地 venv
+# - 安装依赖
+# - 下载便携式 Chromium + ChromeDriver 到项目目录
+# - 在无图形环境（WSL/服务器）自动启用无头模式
+# - 安装完成后自动引导登录（输入账号与密码，覆盖保存）
 chmod +x scripts/install.sh
 ./scripts/install.sh
 ```
 
-### Windows
+### Windows（全自动）
 
 ```cmd
 # 下载项目
 git clone https://github.com/your-username/claude-auto-clicker.git
 cd claude-auto-clicker
 
-# 运行安装脚本
+:: 一键安装（全自动）：
+:: - 安装依赖与包装器
+:: - 下载便携式 Chromium + ChromeDriver 到项目目录
+:: - 启用无头模式
+:: - 安装完成后自动引导登录（输入账号与密码，覆盖保存）
 scripts\install.bat
 ```
 
@@ -56,12 +65,16 @@ scripts\install.bat
 
 ```
 claude-auto-clicker/
-├── claude-auto-clicker         # 本地启动脚本
-├── data/                       # 用户数据（自动创建）
-│   ├── config.json            # 配置文件（加密存储密码）
-│   └── logs/                  # 日志文件
-├── venv/                      # 本地虚拟环境（可选）
-├── uninstall.sh               # 卸载脚本
+├── claude-auto-clicker          # 本地启动脚本（使用 python -m 运行 CLI）
+├── browsers/                    # 便携式浏览器组件（安装时自动下载）
+│   ├── chromium/               # Chromium 可执行文件（按平台）
+│   ├── drivers/                # 匹配的 chromedriver 可执行文件
+│   └── version.json            # 已下载版本信息
+├── data/                        # 用户数据（自动创建）
+│   ├── config.json             # 配置文件（加密存储密码）
+│   └── logs/                   # 日志文件
+├── venv/                        # 本地虚拟环境（安装时自动创建并激活）
+├── uninstall.sh                 # 卸载脚本
 └── [其他项目文件...]
 ```
 
@@ -69,8 +82,12 @@ claude-auto-clicker/
 
 ### 1. 配置登录凭据
 
+安装脚本结束后会自动引导登录。如需手动执行或更新：
+
 ```bash
-./claude-auto-clicker login
+./claude-auto-clicker login           # 交互式输入（总是提示并覆盖保存）
+# 或者自动化：
+./claude-auto-clicker login -u <用户名> -p <密码>
 ```
 
 ### 2. 查看配置状态
@@ -110,8 +127,9 @@ claude
 
 ### 配置文件位置
 
-- **配置文件**: `./data/config.json`
-- **日志文件**: `./data/logs/claude_auto_clicker.log`
+- 配置文件: `./data/config.json`
+- 日志文件: `./data/logs/claude_auto_clicker.log`
+- 便携式浏览器: `./browsers/`（Chromium 与 chromedriver 已固定匹配版本）
 
 ### 默认配置
 
@@ -177,6 +195,34 @@ source ./venv/bin/activate  # Linux/Mac
 # 重新安装依赖
 pip install -r requirements.txt
 ```
+
+### 4. 浏览器/驱动下载失败或网络受限
+
+- 直接运行兜底脚本（与安装脚本使用相同逻辑）：
+  ```bash
+  python3 scripts/download_browsers.py
+  ```
+- Linux/WSL 必要运行库（如缺少）：
+  ```bash
+  sudo apt-get update && sudo apt-get install -y \
+    fonts-liberation libasound2 libnss3 libx11-xcb1 libxi6 libxcomposite1 \
+    libxcursor1 libxdamage1 libxfixes3 libxrandr2 libatk-bridge2.0-0 \
+    libgtk-3-0 libxss1 libdrm2 libgbm1
+  ```
+- WSL/服务器默认已启用无头模式；如需关闭：
+  ```bash
+  ./claude-auto-clicker config browser.headless false
+  ```
+
+### 5. 团队共享与仓库体积
+
+- 建议使用 Git LFS 跟踪 `browsers/**`，团队 clone 后即可使用，避免重复下载：
+  ```bash
+  git lfs install
+  git lfs track "browsers/**"
+  git add .gitattributes browsers
+  git commit -m "vendor chromium + chromedriver via LFS"
+  ```
 
 ## 🗑️ 卸载
 

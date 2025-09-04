@@ -8,7 +8,6 @@ python --version >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
     echo ❌ 错误: 未找到 Python
     echo 请先安装 Python 3.7 或更高版本
-    pause
     exit /b 1
 )
 
@@ -19,7 +18,6 @@ claude --version >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
     echo ❌ 错误: 未找到 claude 命令
     echo 请先安装 Claude Code: https://claude.ai/code
-    pause
     exit /b 1
 )
 
@@ -35,7 +33,6 @@ echo 📦 安装依赖包...
 pip install -r requirements.txt
 if %ERRORLEVEL% NEQ 0 (
     echo ❌ 依赖安装失败
-    pause
     exit /b 1
 )
 
@@ -44,7 +41,6 @@ echo 📦 安装 Claude Auto Clicker...
 pip install -e .
 if %ERRORLEVEL% NEQ 0 (
     echo ❌ 安装失败
-    pause
     exit /b 1
 )
 
@@ -123,4 +119,6 @@ if %ERRORLEVEL% NEQ 0 (
 echo 🖥️  启用无头模式
 claude-auto-clicker config browser.headless true
 
-pause
+echo.
+echo 🔐 立即配置登录凭据
+claude-auto-clicker login
