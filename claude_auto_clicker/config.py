@@ -34,7 +34,9 @@ class ConfigManager:
     }
     
     def __init__(self):
-        self.config_dir = Path.home() / ".claude-auto-clicker"
+        # 使用项目根目录下的 data 文件夹存储配置
+        project_root = Path(__file__).parent.parent
+        self.config_dir = project_root / "data"
         self.config_file = self.config_dir / "config.json"
         self.encryptor = PasswordEncryption()
         self._ensure_config_dir()

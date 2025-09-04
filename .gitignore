@@ -58,6 +58,18 @@ venv.bak/
 .DS_Store
 Thumbs.db
 
+# 本地数据文件夹（包含用户配置和日志）
+data/
+
+# 本地虚拟环境
+venv/
+.env
+
+# 本地启动脚本（安装时生成）
+claude-auto-clicker
+claude_wrapper_local.py
+uninstall.sh
+
 # Config files (contain sensitive data)
 config.json
 *.log

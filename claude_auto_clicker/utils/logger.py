@@ -21,8 +21,9 @@ class Logger:
     
     def _setup_handlers(self):
         """设置日志处理器"""
-        # 创建日志目录
-        log_dir = Path.home() / ".claude-auto-clicker" / "logs"
+        # 创建日志目录在项目内部
+        project_root = Path(__file__).parent.parent.parent
+        log_dir = project_root / "data" / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
         
         # 文件处理器
