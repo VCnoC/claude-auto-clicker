@@ -245,3 +245,8 @@ def uninstall_browsers():
 def main():
     """主入口函数"""
     cli()
+
+
+if __name__ == "__main__":
+    # 允许通过 `python -m claude_auto_clicker.cli` 直接运行
+    main()
