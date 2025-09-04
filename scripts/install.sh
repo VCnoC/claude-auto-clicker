@@ -44,26 +44,44 @@ check_and_install_browser() {
     # 都没有，推荐安装 Chromium
     echo "⚠️  未检测到浏览器"
     echo "💡 推荐安装 Chromium（轻量级，适合自动化任务）"
+    echo ""
+    echo "🔧 浏览器安装选项："
+    echo "   1) 便携式 Chromium（推荐）- 下载到项目文件夹，完全隔离"
+    echo "   2) 系统级 Chromium - 通过包管理器安装"
+    echo "   3) 跳过安装 - 稍后手动安装"
+    echo ""
     
-    if command -v apt &> /dev/null; then
-        read -p "是否安装 Chromium 浏览器？[推荐] (Y/n): " install_browser
-        # 默认为 Y
-        if [[ $install_browser =~ ^[Nn]$ ]]; then
-            echo "⏭️  跳过浏览器安装"
-        else
-            echo "📦 正在安装 Chromium（轻量级浏览器）..."
-            echo "💭 Chromium 优势：轻量、开源、适合自动化"
-            
-            if sudo apt update && sudo apt install -y chromium-browser; then
-                echo "✅ Chromium 安装成功！"
-                echo "📏 安装大小：约 80MB"
-                return 0
+    read -p "请选择安装方式 [1/2/3]: " choice
+    
+    case $choice in
+        1)
+            echo "📦 将在安装完成后下载便携式 Chromium..."
+            echo "✅ 便携式 Chromium 优势：完全隔离，卸载时一并清理"
+            INSTALL_PORTABLE_CHROMIUM=true
+            ;;
+        2)
+            if command -v apt &> /dev/null; then
+                echo "📦 正在安装系统级 Chromium..."
+                echo "💭 Chromium 优势：轻量、开源、适合自动化"
+                
+                if sudo apt update && sudo apt install -y chromium-browser; then
+                    echo "✅ Chromium 安装成功！"
+                    echo "📏 安装大小：约 80MB"
+                    return 0
+                else
+                    echo "❌ Chromium 自动安装失败"
+                    echo "🔧 请手动安装: sudo apt install chromium-browser"
+                fi
             else
-                echo "❌ Chromium 自动安装失败"
-                echo "🔧 请手动安装: sudo apt install chromium-browser"
+                echo "❌ 系统不支持 apt 包管理器"
+                echo "请手动安装浏览器或选择便携式安装"
             fi
-        fi
-    fi
+            ;;
+        3|*)
+            echo "⏭️  跳过浏览器安装"
+            echo "⚠️  请确保稍后安装浏览器，否则无法正常运行"
+            ;;
+    esac
     
     echo ""
     echo "📖 浏览器安装指南："
@@ -305,5 +323,21 @@ echo ""
 echo "🗑️  如需卸载:"
 echo "   1. 运行卸载脚本: ./uninstall.sh"
 echo "   2. 删除整个项目文件夹即可完全清理"
+# 下载便携式 Chromium（如果选择了）
+if [ "$INSTALL_PORTABLE_CHROMIUM" = true ]; then
+    echo ""
+    echo "📦 下载便携式 Chromium..."
+    echo "这可能需要几分钟，请稍等..."
+    
+    if ./claude-auto-clicker install-chromium --force; then
+        echo "✅ 便携式 Chromium 安装成功！"
+        echo "📁 位置: ./browsers/chromium/"
+        echo "🎯 完全隔离，卸载时一并清理"
+    else
+        echo "❌ 便携式 Chromium 下载失败"
+        echo "💡 可稍后手动运行: ./claude-auto-clicker install-chromium"
+    fi
+fi
+
 echo ""
 echo "✨ 绿色软件模式：删除文件夹即可完全卸载！"

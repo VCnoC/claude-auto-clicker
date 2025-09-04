@@ -9,6 +9,8 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service
 import time
 import datetime
+import os
+from pathlib import Path
 from typing import Dict, Any
 
 from ..config import config_manager
@@ -23,6 +25,38 @@ class AutoClicker:
         self.driver = None
         self.config = config_manager.load_config()
         self.login_handler = None
+        self.project_root = Path(__file__).parent.parent.parent
+    
+    def _get_chromium_path(self) -> str:
+        """获取 Chromium 浏览器路径，优先使用项目内的版本"""
+        # 1. 优先检查项目内的 Chromium
+        local_chromium_paths = [
+            self.project_root / "browsers" / "chromium" / "chrome",
+            self.project_root / "browsers" / "chromium-browser",
+            self.project_root / "chromium" / "chrome",
+            self.project_root / "chromium-browser"
+        ]
+        
+        for path in local_chromium_paths:
+            if path.exists() and os.access(path, os.X_OK):
+                logger.info(f"✅ 找到项目内 Chromium: {path}")
+                return str(path)
+        
+        # 2. 检查系统安装的 Chromium
+        system_chromium_paths = [
+            "/usr/bin/chromium-browser",
+            "/usr/bin/chromium",
+            "/snap/bin/chromium",
+            "/opt/google/chrome/chrome"
+        ]
+        
+        for path in system_chromium_paths:
+            if os.path.exists(path) and os.access(path, os.X_OK):
+                logger.info(f"✅ 找到系统 Chromium: {path}")
+                return path
+        
+        logger.warning("❌ 未找到可用的 Chromium 浏览器")
+        return None
     
     def _setup_browser(self) -> webdriver.Chrome:
         """设置浏览器"""
@@ -42,32 +76,41 @@ class AutoClicker:
         if user_agent:
             options.add_argument(f"user-agent='{user_agent}'")
         
-        # 优先尝试 Chromium（推荐用于自动化）
+        # 获取 Chromium 路径
+        chromium_path = self._get_chromium_path()
+        
+        if chromium_path:
+            # 尝试启动 Chromium
+            try:
+                logger.info("尝试启动 Chromium...")
+                # 创建新的选项实例避免冲突
+                chromium_options = webdriver.ChromeOptions()
+                for arg in options.arguments:
+                    chromium_options.add_argument(arg)
+                chromium_options.binary_location = chromium_path
+                
+                service = Service(ChromeDriverManager().install())
+                driver = webdriver.Chrome(service=service, options=chromium_options)
+                logger.info("✅ Chromium 启动成功")
+                return driver
+            except Exception as e:
+                logger.info(f"Chromium 启动失败: {e}")
+                logger.info("尝试回退到系统默认浏览器...")
+        
+        # 回退到系统默认 Chrome/Chromium
         try:
-            logger.info("尝试启动 Chromium...")
-            options.binary_location = "/usr/bin/chromium-browser"
+            logger.info("尝试使用系统默认浏览器...")
             service = Service(ChromeDriverManager().install())
             driver = webdriver.Chrome(service=service, options=options)
-            logger.info("✅ Chromium 启动成功（推荐用于自动化）")
+            logger.info("✅ 系统浏览器启动成功")
             return driver
         except Exception as e:
-            logger.info(f"Chromium 启动失败: {e}")
-            logger.info("尝试使用 Chrome...")
-            
-            # 回退到 Chrome
-            options.binary_location = None  # 重置二进制位置
-            try:
-                service = Service(ChromeDriverManager().install())
-                driver = webdriver.Chrome(service=service, options=options)
-                logger.info("✅ Chrome 启动成功")
-                return driver
-            except Exception as e2:
-                logger.error(f"Chrome 也启动失败: {e2}")
-                raise Exception(
-                    "❌ 无法启动浏览器。请安装 Chromium（推荐）或 Chrome:\n"
-                    "• Chromium: sudo apt install chromium-browser\n"
-                    "• Chrome: sudo apt install google-chrome-stable"
-                )
+            logger.error(f"系统浏览器启动失败: {e}")
+            raise Exception(
+                "❌ 无法启动浏览器。建议:\n"
+                f"• 运行 './claude-auto-clicker install-chromium' 下载便携版 Chromium\n"
+                "• 或安装系统 Chromium: sudo apt install chromium-browser"
+            )
     
     def _handle_login_if_needed(self) -> bool:
         """处理登录（如果需要）"""
