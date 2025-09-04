@@ -29,10 +29,7 @@ def login(username, password):
     if not username:
         username = click.prompt("请输入用户名")
     if password is None:
-        try:
-            password = getpass.getpass("请输入密码: ")
-        except Exception:
-            password = click.prompt("请输入密码", hide_input=True)
+        password = getpass.getpass("请输入密码: ")
 
     if not username or not password:
         click.echo("❌ 用户名和密码不能为空")
