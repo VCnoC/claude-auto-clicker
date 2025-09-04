@@ -7,7 +7,7 @@ from pathlib import Path
 from .config import config_manager
 from .core.auto_clicker import auto_clicker
 from .utils.logger import logger
-from .utils.browser_downloader import ChromiumDownloader
+from .utils.browser_downloader import ChromiumDownloader, BrowserDownloader
 
 
 @click.group()
@@ -18,18 +18,36 @@ def cli():
 
 
 @cli.command()
-def login():
-    """设置登录凭据"""
+@click.option('--username', '-u', help='用户名')
+@click.option('--password', '-p', help='密码')
+def login(username, password):
+    """设置登录凭据（支持交互或参数传入）"""
     click.echo("设置登录凭据")
     click.echo("=" * 30)
-    
-    username = click.prompt("请输入用户名")
-    password = getpass.getpass("请输入密码: ")
-    
+
+    # 已有配置时提示覆盖
+    current_user, _ = config_manager.get_login_credentials()
+
+    if not username:
+        default_user = current_user if current_user else None
+        if default_user:
+            click.echo(f"当前已配置用户名: {default_user}")
+            if not click.confirm("是否更新登录凭据？"):
+                click.echo("已取消")
+                return
+        username = click.prompt("请输入用户名", default=default_user, show_default=False)
+
+    if password is None:
+        try:
+            password = getpass.getpass("请输入密码: ")
+        except Exception:
+            # 某些环境下 getpass 可能不可用，回退到明文输入
+            password = click.prompt("请输入密码", hide_input=True)
+
     if not username or not password:
         click.echo("❌ 用户名和密码不能为空")
         return
-    
+
     try:
         config_manager.set_login_credentials(username, password)
         click.echo("✅ 登录凭据设置成功")
@@ -183,6 +201,55 @@ def uninstall_chromium():
             click.echo("✅ 便携式 Chromium 已卸载")
         else:
             click.echo("❌ 卸载失败")
+
+
+@cli.command(name='download-browsers')
+@click.option('--force', is_flag=True, help='强制重新下载，即使已安装')
+def download_browsers(force):
+    """下载浏览器组件到项目目录（Chromium + ChromeDriver）"""
+    project_root = Path(__file__).parent.parent
+    downloader = BrowserDownloader(project_root)
+
+    click.echo("🚀 浏览器组件下载器")
+    click.echo("=" * 40)
+
+    if downloader.is_installed() and not force:
+        chromium_path = downloader.get_chromium_path()
+        driver_path = downloader.get_chromedriver_path()
+        click.echo("✅ 浏览器组件已安装")
+        click.echo(f"   Chromium: {chromium_path}")
+        click.echo(f"   ChromeDriver: {driver_path}")
+        if not click.confirm("\n是否重新下载？"):
+            return
+
+    click.echo("\n开始下载浏览器组件...")
+    click.echo("这可能需要几分钟时间，请耐心等待...")
+
+    try:
+        if downloader.download_all():
+            click.echo("\n🎉 下载完成！")
+            click.echo("现在其他人 git clone 项目后就可以直接使用了")
+        else:
+            click.echo("\n❌ 下载失败，请检查网络连接和日志")
+    except Exception as e:
+        click.echo(f"\n❌ 下载过程中发生错误: {e}")
+
+
+@cli.command(name='uninstall-browsers')
+def uninstall_browsers():
+    """卸载项目内的浏览器组件（删除 browsers 目录）"""
+    project_root = Path(__file__).parent.parent
+    browsers_dir = project_root / "browsers"
+    if not browsers_dir.exists():
+        click.echo("项目内浏览器组件未安装")
+        return
+    if click.confirm("确认卸载项目内浏览器组件？这将删除 browsers 目录"):
+        try:
+            import shutil
+            shutil.rmtree(browsers_dir)
+            click.echo("✅ 项目内浏览器组件已卸载")
+        except Exception as e:
+            click.echo(f"❌ 卸载失败: {e}")
 
 
 def main():
