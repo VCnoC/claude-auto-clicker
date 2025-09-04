@@ -109,8 +109,14 @@ fi
 # 添加项目路径到 Python 路径
 export PYTHONPATH="$SCRIPT_DIR:$PYTHONPATH"
 
-# 运行 CLI
-python -m claude_auto_clicker.cli "$@"
+# 运行 CLI（避免模块导入警告）
+python -c "
+import sys
+sys.path.insert(0, '$SCRIPT_DIR')
+from claude_auto_clicker.cli import main
+if __name__ == '__main__':
+    main()
+" "$@"
 EOF
 
 chmod +x claude-auto-clicker
