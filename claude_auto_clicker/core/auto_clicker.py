@@ -101,7 +101,17 @@ class AutoClicker:
                     chromium_options.add_argument(arg)
                 chromium_options.binary_location = chromium_path
                 
+                # 添加额外的稳定性选项
+                chromium_options.add_argument("--remote-debugging-port=9222")
+                chromium_options.add_argument("--disable-extensions")
+                chromium_options.add_argument("--disable-plugins")
+                chromium_options.add_argument("--disable-web-security")
+                chromium_options.add_argument("--allow-running-insecure-content")
+                
+                # 使用 webdriver-manager 自动管理 ChromeDriver
+                logger.info("使用 webdriver-manager 自动获取兼容的 ChromeDriver...")
                 service = Service(ChromeDriverManager().install())
+                
                 driver = webdriver.Chrome(service=service, options=chromium_options)
                 logger.info("✅ Chromium 启动成功")
                 return driver

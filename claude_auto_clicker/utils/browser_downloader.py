@@ -20,16 +20,16 @@ class ChromiumDownloader:
         self.browsers_dir = project_root / "browsers"
         self.chromium_dir = self.browsers_dir / "chromium"
         
-        # Chromium 下载 URL 配置（使用稳定版本）
+        # Chromium 下载 URL 配置（使用较新的稳定版本，更好的 WebDriver 兼容性）
         self.chromium_urls = {
             "linux": {
-                "x64": "https://storage.googleapis.com/chromium-browser-snapshots/Linux_x64/1108766/chrome-linux.zip",
+                "x64": "https://storage.googleapis.com/chromium-browser-snapshots/Linux_x64/1200000/chrome-linux.zip",
             },
             "windows": {
-                "x64": "https://storage.googleapis.com/chromium-browser-snapshots/Win_x64/1108766/chrome-win.zip",
+                "x64": "https://storage.googleapis.com/chromium-browser-snapshots/Win_x64/1200000/chrome-win.zip",
             },
             "darwin": {  # macOS
-                "x64": "https://storage.googleapis.com/chromium-browser-snapshots/Mac/1108766/chrome-mac.zip"
+                "x64": "https://storage.googleapis.com/chromium-browser-snapshots/Mac/1200000/chrome-mac.zip"
             }
         }
     
