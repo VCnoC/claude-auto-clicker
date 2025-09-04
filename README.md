@@ -23,7 +23,7 @@
 
 - Python 3.7 或更高版本
 - Claude Code (必须先安装)
-- Chrome 浏览器
+- Chromium 浏览器（推荐，轻量级）或 Chrome 浏览器
 
 ## 快速安装
 

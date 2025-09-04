@@ -25,6 +25,57 @@ fi
 
 echo "✅ 检测到 Claude Code"
 
+# 检查并安装浏览器
+check_and_install_browser() {
+    echo "🌐 检查浏览器环境..."
+    
+    # 优先检查 Chromium（推荐用于自动化）
+    if command -v chromium-browser &> /dev/null; then
+        echo "✅ Chromium 已安装（推荐用于自动化）"
+        return 0
+    fi
+    
+    # 检查 Chrome
+    if command -v google-chrome &> /dev/null; then
+        echo "✅ Google Chrome 已安装"
+        return 0
+    fi
+    
+    # 都没有，推荐安装 Chromium
+    echo "⚠️  未检测到浏览器"
+    echo "💡 推荐安装 Chromium（轻量级，适合自动化任务）"
+    
+    if command -v apt &> /dev/null; then
+        read -p "是否安装 Chromium 浏览器？[推荐] (Y/n): " install_browser
+        # 默认为 Y
+        if [[ $install_browser =~ ^[Nn]$ ]]; then
+            echo "⏭️  跳过浏览器安装"
+        else
+            echo "📦 正在安装 Chromium（轻量级浏览器）..."
+            echo "💭 Chromium 优势：轻量、开源、适合自动化"
+            
+            if sudo apt update && sudo apt install -y chromium-browser; then
+                echo "✅ Chromium 安装成功！"
+                echo "📏 安装大小：约 80MB"
+                return 0
+            else
+                echo "❌ Chromium 自动安装失败"
+                echo "🔧 请手动安装: sudo apt install chromium-browser"
+            fi
+        fi
+    fi
+    
+    echo ""
+    echo "📖 浏览器安装指南："
+    echo "   • Chromium（推荐）: sudo apt install chromium-browser"
+    echo "   • Chrome（完整版）: sudo apt install google-chrome-stable"
+    echo ""
+    echo "ℹ️  继续安装，但运行时需要浏览器支持"
+}
+
+# 检查浏览器
+check_and_install_browser
+
 # 检查并安装 python3-venv（如果需要）
 check_and_install_venv() {
     if ! python3 -m venv --help &> /dev/null; then

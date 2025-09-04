@@ -5,6 +5,8 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service
 import time
 import datetime
 from typing import Dict, Any
@@ -34,15 +36,38 @@ class AutoClicker:
         
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")  # 解决共享内存问题
         
         user_agent = browser_config.get('user_agent')
         if user_agent:
             options.add_argument(f"user-agent='{user_agent}'")
         
-        # 创建驱动
-        driver = webdriver.Chrome(options=options)
-        logger.info("浏览器启动成功")
-        return driver
+        # 优先尝试 Chromium（推荐用于自动化）
+        try:
+            logger.info("尝试启动 Chromium...")
+            options.binary_location = "/usr/bin/chromium-browser"
+            service = Service(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service, options=options)
+            logger.info("✅ Chromium 启动成功（推荐用于自动化）")
+            return driver
+        except Exception as e:
+            logger.info(f"Chromium 启动失败: {e}")
+            logger.info("尝试使用 Chrome...")
+            
+            # 回退到 Chrome
+            options.binary_location = None  # 重置二进制位置
+            try:
+                service = Service(ChromeDriverManager().install())
+                driver = webdriver.Chrome(service=service, options=options)
+                logger.info("✅ Chrome 启动成功")
+                return driver
+            except Exception as e2:
+                logger.error(f"Chrome 也启动失败: {e2}")
+                raise Exception(
+                    "❌ 无法启动浏览器。请安装 Chromium（推荐）或 Chrome:\n"
+                    "• Chromium: sudo apt install chromium-browser\n"
+                    "• Chrome: sudo apt install google-chrome-stable"
+                )
     
     def _handle_login_if_needed(self) -> bool:
         """处理登录（如果需要）"""
