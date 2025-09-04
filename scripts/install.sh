@@ -323,20 +323,26 @@ echo ""
 echo "🗑️  如需卸载:"
 echo "   1. 运行卸载脚本: ./uninstall.sh"
 echo "   2. 删除整个项目文件夹即可完全清理"
-# 下载便携式 Chromium（如果选择了）
+# 下载便携式浏览器组件（如果选择了）
 if [ "$INSTALL_PORTABLE_CHROMIUM" = true ]; then
     echo ""
-    echo "📦 下载便携式 Chromium..."
+    echo "📦 下载便携式浏览器组件 (Chromium + ChromeDriver)..."
     echo "这可能需要几分钟，请稍等..."
-    
-    if ./claude-auto-clicker install-chromium --force; then
-        echo "✅ 便携式 Chromium 安装成功！"
-        echo "📁 位置: ./browsers/chromium/"
-        echo "🎯 完全隔离，卸载时一并清理"
+
+    if ./claude-auto-clicker download-browsers --force; then
+        echo "✅ 浏览器组件安装成功！"
+        echo "📁 Chromium: ./browsers/chromium/"
+        echo "📁 ChromeDriver: ./browsers/drivers/"
     else
-        echo "❌ 便携式 Chromium 下载失败"
-        echo "💡 可稍后手动运行: ./claude-auto-clicker install-chromium"
+        echo "❌ 浏览器组件下载失败"
+        echo "💡 可稍后手动运行: ./claude-auto-clicker download-browsers --force"
     fi
+fi
+
+# 在无图形环境（如 WSL 或未设置 DISPLAY）默认启用无头模式
+if [ -z "$DISPLAY" ] || grep -qi microsoft /proc/version 2>/dev/null; then
+    echo "🖥️  检测到无图形环境，启用浏览器无头模式"
+    ./claude-auto-clicker config browser.headless true || true
 fi
 
 echo ""

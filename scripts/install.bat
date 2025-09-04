@@ -96,4 +96,21 @@ echo 4. 启动 claude 命令时会自动触发后台点击
 echo.
 echo 🗑️  如需卸载，请运行: %USERPROFILE%\.claude-auto-clicker\uninstall.bat
 
+REM 可选：下载便携式浏览器组件并启用无头模式
+choice /M "是否下载便携式浏览器组件 (Chromium + ChromeDriver) 并启用无头模式?" /C YN
+if errorlevel 2 goto SKIP_DOWNLOAD
+
+echo 📦 正在下载浏览器组件...
+claude-auto-clicker download-browsers --force
+if %ERRORLEVEL% NEQ 0 (
+    echo ❌ 浏览器组件下载失败，可稍后运行: claude-auto-clicker download-browsers --force
+) else (
+    echo ✅ 浏览器组件安装完成
+)
+
+echo 🖥️  启用无头模式
+claude-auto-clicker config browser.headless true
+
+:SKIP_DOWNLOAD
+
 pause
