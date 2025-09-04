@@ -20,18 +20,16 @@ class ChromiumDownloader:
         self.browsers_dir = project_root / "browsers"
         self.chromium_dir = self.browsers_dir / "chromium"
         
-        # Chromium 下载 URL 配置
+        # Chromium 下载 URL 配置（使用稳定版本）
         self.chromium_urls = {
             "linux": {
-                "x64": "https://download-chromium.appspot.com/dl/Linux_x64?type=snapshots",
-                "x86": "https://download-chromium.appspot.com/dl/Linux?type=snapshots"
+                "x64": "https://storage.googleapis.com/chromium-browser-snapshots/Linux_x64/1108766/chrome-linux.zip",
             },
             "windows": {
-                "x64": "https://download-chromium.appspot.com/dl/Win_x64?type=snapshots",
-                "x86": "https://download-chromium.appspot.com/dl/Win?type=snapshots"
+                "x64": "https://storage.googleapis.com/chromium-browser-snapshots/Win_x64/1108766/chrome-win.zip",
             },
             "darwin": {  # macOS
-                "x64": "https://download-chromium.appspot.com/dl/Mac?type=snapshots"
+                "x64": "https://storage.googleapis.com/chromium-browser-snapshots/Mac/1108766/chrome-mac.zip"
             }
         }
     
@@ -54,8 +52,23 @@ class ChromiumDownloader:
         """下载文件"""
         try:
             logger.info(f"开始下载: {url}")
-            response = requests.get(url, stream=True)
+            
+            # 添加用户代理和其他头部
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+            
+            response = requests.get(url, stream=True, headers=headers, timeout=30)
             response.raise_for_status()
+            
+            # 检查内容类型
+            content_type = response.headers.get('content-type', '')
+            logger.info(f"下载内容类型: {content_type}")
+            
+            # 如果是 HTML 页面，说明可能是重定向错误
+            if 'text/html' in content_type:
+                logger.error(f"下载的是 HTML 页面而不是文件，URL 可能有问题: {url}")
+                return False
             
             total_size = int(response.headers.get('content-length', 0))
             downloaded = 0
@@ -73,7 +86,14 @@ class ChromiumDownloader:
             if show_progress:
                 print()  # 换行
             
-            logger.info(f"下载完成: {filepath}")
+            # 验证下载的文件大小
+            if filepath.stat().st_size < 1024:  # 小于 1KB 可能是错误页面
+                logger.error(f"下载的文件太小 ({filepath.stat().st_size} bytes)，可能下载失败")
+                if filepath.exists():
+                    filepath.unlink()
+                return False
+            
+            logger.info(f"下载完成: {filepath} ({filepath.stat().st_size} bytes)")
             return True
             
         except Exception as e:
@@ -86,22 +106,75 @@ class ChromiumDownloader:
         """解压归档文件"""
         try:
             extract_to.mkdir(parents=True, exist_ok=True)
+            logger.info(f"开始解压: {archive_path} -> {extract_to}")
             
-            if archive_path.suffix == '.zip':
-                with zipfile.ZipFile(archive_path, 'r') as zip_ref:
-                    zip_ref.extractall(extract_to)
-            elif archive_path.suffix in ['.tar', '.gz']:
-                with tarfile.open(archive_path, 'r:*') as tar_ref:
-                    tar_ref.extractall(extract_to)
+            # 检查文件头部来确定实际文件类型
+            with open(archive_path, 'rb') as f:
+                header = f.read(10)
+            
+            # ZIP 文件魔术数字
+            if header[:2] == b'PK':
+                logger.info("检测到 ZIP 文件")
+                try:
+                    with zipfile.ZipFile(archive_path, 'r') as zip_ref:
+                        zip_ref.extractall(extract_to)
+                    logger.info(f"ZIP 解压完成: {extract_to}")
+                    return True
+                except zipfile.BadZipFile as e:
+                    logger.error(f"ZIP 文件损坏: {e}")
+                    return False
+            
+            # TAR/GZIP 文件魔术数字
+            elif header[:2] == b'\x1f\x8b':  # GZIP
+                logger.info("检测到 GZIP 文件")
+                try:
+                    with tarfile.open(archive_path, 'r:gz') as tar_ref:
+                        tar_ref.extractall(extract_to)
+                    logger.info(f"GZIP 解压完成: {extract_to}")
+                    return True
+                except tarfile.ReadError as e:
+                    logger.error(f"GZIP 文件处理失败: {e}")
+                    return False
+            
+            # 纯 TAR 文件
+            elif header[:5] == b'ustar':
+                logger.info("检测到 TAR 文件")
+                try:
+                    with tarfile.open(archive_path, 'r:') as tar_ref:
+                        tar_ref.extractall(extract_to)
+                    logger.info(f"TAR 解压完成: {extract_to}")
+                    return True
+                except tarfile.ReadError as e:
+                    logger.error(f"TAR 文件处理失败: {e}")
+                    return False
+            
             else:
-                logger.error(f"不支持的归档格式: {archive_path.suffix}")
+                # 尝试读取更多内容来判断
+                logger.warning(f"无法识别文件类型，文件头: {header}")
+                
+                # 先检查文件内容是否是 HTML（错误页面）
+                with open(archive_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content_start = f.read(200)
+                    if content_start.strip().startswith('<!DOCTYPE') or '<html' in content_start:
+                        logger.error("下载的是 HTML 页面，不是压缩包文件")
+                        return False
+                
+                # 强制按扩展名尝试解压
+                if archive_path.suffix == '.zip':
+                    logger.info("根据扩展名强制尝试 ZIP 解压")
+                    try:
+                        with zipfile.ZipFile(archive_path, 'r') as zip_ref:
+                            zip_ref.extractall(extract_to)
+                        logger.info(f"强制 ZIP 解压成功: {extract_to}")
+                        return True
+                    except Exception as e:
+                        logger.error(f"强制 ZIP 解压失败: {e}")
+                
+                logger.error(f"无法处理的文件格式: {archive_path}")
                 return False
             
-            logger.info(f"解压完成: {extract_to}")
-            return True
-            
         except Exception as e:
-            logger.error(f"解压失败: {e}")
+            logger.error(f"解压过程中出现异常: {e}")
             return False
     
     def _make_executable(self, file_path: Path) -> bool:
@@ -150,9 +223,8 @@ class ChromiumDownloader:
         # 下载 URL
         download_url = self.chromium_urls[platform][arch]
         
-        # 确定下载文件名
-        archive_extension = '.zip' if platform == 'windows' else '.tar.gz'
-        archive_path = self.browsers_dir / f"chromium_{platform}_{arch}{archive_extension}"
+        # 所有平台都使用 .zip 格式
+        archive_path = self.browsers_dir / f"chromium_{platform}_{arch}.zip"
         
         # 下载文件
         logger.info(f"为 {platform} {arch} 下载 Chromium...")
