@@ -243,16 +243,44 @@ else
     echo "⚠️  未找到原始 claude 命令备份"
 fi
 
+# 询问是否删除 Chromium
+echo ""
+echo "🌐 Chromium 浏览器处理："
+if command -v chromium-browser &> /dev/null; then
+    echo "检测到已安装的 Chromium 浏览器"
+    read -p "是否也删除 Chromium 浏览器？(y/n): " remove_chromium
+    if [[ $remove_chromium =~ ^[Yy]$ ]]; then
+        echo "🗑️  正在删除 Chromium..."
+        if sudo apt remove -y chromium-browser; then
+            echo "✅ Chromium 已删除"
+        else
+            echo "❌ Chromium 删除失败，请手动执行: sudo apt remove chromium-browser"
+        fi
+    else
+        echo "⏭️  保留 Chromium 浏览器（其他程序可能需要）"
+    fi
+else
+    echo "ℹ️  未检测到 Chromium 浏览器"
+fi
+
+# 清理 webdriver-manager 缓存
+echo ""
+echo "🧹 清理驱动缓存..."
+if [ -d "$HOME/.wdm" ]; then
+    rm -rf "$HOME/.wdm"
+    echo "✅ 已清理 webdriver-manager 缓存"
+fi
+
 # 删除项目文件夹提醒
 echo ""
-echo "📁 所有文件都在项目目录中："
+echo "📁 项目文件夹："
 echo "   $PROJECT_DIR"
 echo ""
 echo "要完全删除 Claude Auto Clicker，请："
 echo "1. 退出当前目录: cd .."
 echo "2. 删除整个项目文件夹: rm -rf claude-auto-clicker"
 echo ""
-echo "✅ Claude 命令已恢复，可以安全删除项目文件夹"
+echo "✅ 卸载完成！可以安全删除项目文件夹"
 EOF
 
 chmod +x uninstall.sh
