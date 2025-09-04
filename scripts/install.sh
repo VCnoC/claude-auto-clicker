@@ -175,17 +175,19 @@ elif [ -d "$SCRIPT_DIR/venv" ]; then
     source "$SCRIPT_DIR/venv/bin/activate"
 fi
 
-# 添加项目路径到 Python 路径
+# 添加项目路径到 PYTHONPATH，确保优先使用本地代码
 export PYTHONPATH="$SCRIPT_DIR:$PYTHONPATH"
 
-# 运行 CLI（避免模块导入警告）
-python -c "
-import sys
-sys.path.insert(0, '$SCRIPT_DIR')
-from claude_auto_clicker.cli import main
-if __name__ == '__main__':
-    main()
-" "$@"
+# 切换到项目目录，使用模块方式运行以确保子命令正确注册
+cd "$SCRIPT_DIR"
+
+# 选择可用的 Python 解释器
+PY_BIN=python3
+if ! command -v "$PY_BIN" >/dev/null 2>&1; then
+  PY_BIN=python
+fi
+
+exec "$PY_BIN" -m claude_auto_clicker.cli "$@"
 EOF
 
 chmod +x claude-auto-clicker
