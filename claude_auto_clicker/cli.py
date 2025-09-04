@@ -27,7 +27,7 @@ def login(username, password):
     # 若未通过参数提供，则交互式输入（总是提示，覆盖旧配置）
     if not username:
         username = click.prompt("请输入用户名")
-    if password is None:
+    if not password:
         password = getpass.getpass("请输入密码: ")
 
     if not username or not password:

@@ -27,7 +27,9 @@
 
 ## 快速安装
 
-### Linux/WSL/Mac（全自动）
+### 方法1：使用安装脚本（推荐）
+
+#### Linux/WSL/Mac（全自动）
 
 ```bash
 # 下载项目
@@ -44,7 +46,7 @@ chmod +x scripts/install.sh
 ./scripts/install.sh
 ```
 
-### Windows（全自动）
+#### Windows（全自动）
 
 ```cmd
 # 下载项目
@@ -57,6 +59,30 @@ cd claude-auto-clicker
 :: - 启用无头模式
 :: - 安装完成后自动引导登录（输入账号与密码，覆盖保存）
 scripts\install.bat
+```
+
+### 方法2：直接使用可执行文件（简单）
+
+#### Windows
+
+```cmd
+# 1. 安装依赖
+pip install -r requirements.txt
+
+# 2. 直接使用
+.\claude-auto-clicker.cmd --help
+.\claude-auto-clicker.cmd login
+```
+
+#### Linux/Mac
+
+```bash
+# 1. 安装依赖
+pip install -r requirements.txt
+
+# 2. 直接使用
+python claude-auto-clicker --help
+python claude-auto-clicker login
 ```
 
 ## 📁 本地化文件结构
@@ -84,22 +110,42 @@ claude-auto-clicker/
 
 安装脚本结束后会自动引导登录。如需手动执行或更新：
 
-```bash
-./claude-auto-clicker login           # 交互式输入（总是提示并覆盖保存）
+#### Windows
+```cmd
+.\claude-auto-clicker.cmd login           # 交互式输入（总是提示并覆盖保存）
 # 或者自动化：
-./claude-auto-clicker login -u <用户名> -p <密码>
+.\claude-auto-clicker.cmd login -u <用户名> -p <密码>
+```
+
+#### Linux/Mac
+```bash
+python claude-auto-clicker login           # 交互式输入（总是提示并覆盖保存）
+# 或者自动化：
+python claude-auto-clicker login -u <用户名> -p <密码>
 ```
 
 ### 2. 查看配置状态
 
+#### Windows
+```cmd
+.\claude-auto-clicker.cmd status
+```
+
+#### Linux/Mac
 ```bash
-./claude-auto-clicker status
+python claude-auto-clicker status
 ```
 
 ### 3. 手动执行点击
 
+#### Windows
+```cmd
+.\claude-auto-clicker.cmd run
+```
+
+#### Linux/Mac
 ```bash
-./claude-auto-clicker run
+python claude-auto-clicker run
 ```
 
 ### 4. 启动 Claude Code
