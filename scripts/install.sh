@@ -323,20 +323,44 @@ echo ""
 echo "🗑️  如需卸载:"
 echo "   1. 运行卸载脚本: ./uninstall.sh"
 echo "   2. 删除整个项目文件夹即可完全清理"
-# 下载便携式浏览器组件（如果选择了）
-if [ "$INSTALL_PORTABLE_CHROMIUM" = true ]; then
-    echo ""
+download_browsers_best_effort() {
     echo "📦 下载便携式浏览器组件 (Chromium + ChromeDriver)..."
     echo "这可能需要几分钟，请稍等..."
 
+    # 优先使用 CLI 子命令（新版本）
     if ./claude-auto-clicker download-browsers --force; then
-        echo "✅ 浏览器组件安装成功！"
-        echo "📁 Chromium: ./browsers/chromium/"
-        echo "📁 ChromeDriver: ./browsers/drivers/"
-    else
-        echo "❌ 浏览器组件下载失败"
-        echo "💡 可稍后手动运行: ./claude-auto-clicker download-browsers --force"
+        echo "✅ 浏览器组件安装成功（通过 CLI）"
+        return 0
     fi
+
+    # 若 CLI 子命令不可用，尝试直接模块调用
+    if command -v python3 >/dev/null 2>&1; then
+        if python3 -m claude_auto_clicker.cli download-browsers --force; then
+            echo "✅ 浏览器组件安装成功（通过 python3 -m）"
+            return 0
+        fi
+    fi
+
+    # 兜底：直接调用脚本（老环境也可用）
+    if command -v python3 >/dev/null 2>&1; then
+        if python3 scripts/download_browsers.py; then
+            echo "✅ 浏览器组件安装成功（通过脚本）"
+            return 0
+        fi
+    fi
+
+    echo "❌ 浏览器组件下载失败"
+    echo "💡 可稍后手动运行："
+    echo "   ./claude-auto-clicker download-browsers --force"
+    echo "   或 python3 -m claude_auto_clicker.cli download-browsers --force"
+    echo "   或 python3 scripts/download_browsers.py"
+    return 1
+}
+
+# 下载便携式浏览器组件（如果选择了）
+if [ "$INSTALL_PORTABLE_CHROMIUM" = true ]; then
+    echo ""
+    download_browsers_best_effort || true
 fi
 
 # 在无图形环境（如 WSL 或未设置 DISPLAY）默认启用无头模式

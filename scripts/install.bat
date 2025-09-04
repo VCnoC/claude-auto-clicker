@@ -96,21 +96,31 @@ echo 4. 启动 claude 命令时会自动触发后台点击
 echo.
 echo 🗑️  如需卸载，请运行: %USERPROFILE%\.claude-auto-clicker\uninstall.bat
 
-REM 可选：下载便携式浏览器组件并启用无头模式
-choice /M "是否下载便携式浏览器组件 (Chromium + ChromeDriver) 并启用无头模式?" /C YN
-if errorlevel 2 goto SKIP_DOWNLOAD
-
-echo 📦 正在下载浏览器组件...
+REM 自动下载便携式浏览器组件并启用无头模式（含兜底）
+echo 📦 正在下载浏览器组件 (Chromium + ChromeDriver)...
 claude-auto-clicker download-browsers --force
 if %ERRORLEVEL% NEQ 0 (
-    echo ❌ 浏览器组件下载失败，可稍后运行: claude-auto-clicker download-browsers --force
+    echo ⚠️  CLI 子命令不可用，尝试 python 模块方式...
+    py -3 -m claude_auto_clicker.cli download-browsers --force
+    if %ERRORLEVEL% NEQ 0 (
+        echo ⚠️  模块方式失败，尝试直接脚本...
+        py -3 scripts\download_browsers.py
+        if %ERRORLEVEL% NEQ 0 (
+            echo ❌ 浏览器组件下载失败，可稍后手动运行其中任一命令：
+            echo    claude-auto-clicker download-browsers --force
+            echo    或 py -3 -m claude_auto_clicker.cli download-browsers --force
+            echo    或 py -3 scripts\download_browsers.py
+        ) else (
+            echo ✅ 浏览器组件安装完成（通过脚本）
+        )
+    ) else (
+        echo ✅ 浏览器组件安装完成（通过 python 模块）
+    )
 ) else (
-    echo ✅ 浏览器组件安装完成
+    echo ✅ 浏览器组件安装完成（通过 CLI）
 )
 
 echo 🖥️  启用无头模式
 claude-auto-clicker config browser.headless true
-
-:SKIP_DOWNLOAD
 
 pause
