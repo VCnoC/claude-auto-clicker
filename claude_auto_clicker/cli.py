@@ -5,7 +5,6 @@ import click
 import getpass
 from pathlib import Path
 from .config import config_manager
-from .core.auto_clicker import auto_clicker
 from .utils.logger import logger
 from .utils.browser_downloader import ChromiumDownloader, BrowserDownloader
 
@@ -65,7 +64,9 @@ def status():
     else:
         click.echo("❌ 便携式 Chromium 未安装，请运行 'claude-auto-clicker install-chromium'")
         # 检查系统浏览器
-        clicker_instance = auto_clicker.__class__()
+        # 延迟导入，避免在非相关命令时提前加载浏览器/配置
+        from .core.auto_clicker import AutoClicker
+        clicker_instance = AutoClicker()
         system_chromium = clicker_instance._get_chromium_path()
         if system_chromium:
             click.echo(f"⚠️  系统 Chromium: {system_chromium}")
@@ -93,6 +94,7 @@ def run():
     click.echo("开始执行点击任务...")
     
     try:
+        from .core.auto_clicker import auto_clicker
         success = auto_clicker.perform_single_click()
         if success:
             click.echo("✅ 点击任务执行成功")
@@ -117,6 +119,7 @@ def start(interval):
     click.echo("按 Ctrl+C 停止")
     
     try:
+        from .core.auto_clicker import auto_clicker
         auto_clicker.start_continuous_clicking(interval)
     except KeyboardInterrupt:
         click.echo("\n✅ 已停止连续点击")
