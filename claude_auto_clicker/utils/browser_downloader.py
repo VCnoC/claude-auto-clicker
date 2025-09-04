@@ -1,5 +1,9 @@
 """
-便携式 Chromium 浏览器下载工具
+便携式浏览器下载工具
+
+包含：
+- ChromiumDownloader：仅管理便携式 Chromium
+- BrowserDownloader：同时管理 Chromium 与 ChromeDriver（供 CLI 与运行时优先使用项目内驱动）
 """
 import os
 import sys
@@ -7,6 +11,7 @@ import shutil
 import tarfile
 import zipfile
 import requests
+import json
 from pathlib import Path
 from typing import Optional
 from ..utils.logger import logger
@@ -304,3 +309,246 @@ class ChromiumDownloader:
         else:
             logger.info("便携式 Chromium 未安装")
             return True
+
+
+class BrowserDownloader:
+    """浏览器下载器 - 下载到项目目录（Chromium + ChromeDriver）"""
+
+    def __init__(self, project_root: Path):
+        self.project_root = project_root
+        self.browsers_dir = project_root / "browsers"
+        self.chromium_dir = self.browsers_dir / "chromium"
+        self.drivers_dir = self.browsers_dir / "drivers"
+
+        # 确保目录存在
+        self.browsers_dir.mkdir(exist_ok=True)
+        self.chromium_dir.mkdir(exist_ok=True)
+        self.drivers_dir.mkdir(exist_ok=True)
+
+        # Chromium 下载配置（与现有脚本保持一致的稳定版本）
+        self.chromium_config = {
+            "version": "1108766",
+            "urls": {
+                "linux": {
+                    "x64": "https://storage.googleapis.com/chromium-browser-snapshots/Linux_x64/1108766/chrome-linux.zip",
+                },
+                "windows": {
+                    "x64": "https://storage.googleapis.com/chromium-browser-snapshots/Win_x64/1108766/chrome-win.zip",
+                },
+                "darwin": {
+                    "x64": "https://storage.googleapis.com/chromium-browser-snapshots/Mac/1108766/chrome-mac.zip",
+                },
+            },
+        }
+
+        # ChromeDriver 下载配置（与上述 Chromium 主版本匹配）
+        self.driver_config = {
+            "version": "110.0.5481.77",
+            "urls": {
+                "linux": {
+                    "x64": "https://chromedriver.storage.googleapis.com/110.0.5481.77/chromedriver_linux64.zip",
+                },
+                "windows": {
+                    "x64": "https://chromedriver.storage.googleapis.com/110.0.5481.77/chromedriver_win32.zip",
+                },
+                "darwin": {
+                    "x64": "https://chromedriver.storage.googleapis.com/110.0.5481.77/chromedriver_mac64.zip",
+                },
+            },
+        }
+
+    def _get_platform_info(self) -> tuple[str, str]:
+        platform = sys.platform
+        if platform.startswith("linux"):
+            platform = "linux"
+        elif platform.startswith("win"):
+            platform = "windows"
+        elif platform.startswith("darwin"):
+            platform = "darwin"
+
+        arch = "x64" if sys.maxsize > 2 ** 32 else "x86"
+        return platform, arch
+
+    def _download_file(self, url: str, filepath: Path, show_progress: bool = True) -> bool:
+        try:
+            logger.info(f"开始下载: {url}")
+            headers = {
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/91.0.4472.124 Safari/537.36"
+                )
+            }
+            response = requests.get(url, stream=True, headers=headers, timeout=60)
+            response.raise_for_status()
+
+            total_size = int(response.headers.get("content-length", 0))
+            downloaded = 0
+            with open(filepath, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if show_progress and total_size > 0:
+                            progress = (downloaded / total_size) * 100
+                            print(f"\r下载进度: {progress:.1f}%", end="", flush=True)
+            if show_progress:
+                print()
+
+            logger.info(f"下载完成: {filepath} ({filepath.stat().st_size} bytes)")
+            return True
+        except Exception as e:
+            logger.error(f"下载失败: {e}")
+            if filepath.exists():
+                try:
+                    filepath.unlink()
+                except Exception:
+                    pass
+            return False
+
+    def _extract_zip(self, zip_path: Path, extract_to: Path) -> bool:
+        try:
+            extract_to.mkdir(parents=True, exist_ok=True)
+            logger.info(f"开始解压: {zip_path} -> {extract_to}")
+            with zipfile.ZipFile(zip_path, "r") as zip_ref:
+                zip_ref.extractall(extract_to)
+            logger.info(f"解压完成: {extract_to}")
+            return True
+        except Exception as e:
+            logger.error(f"解压失败: {e}")
+            return False
+
+    def _make_executable(self, file_path: Path) -> bool:
+        try:
+            if sys.platform != "win32":
+                os.chmod(file_path, 0o755)
+            return True
+        except Exception as e:
+            logger.error(f"设置可执行权限失败: {e}")
+            return False
+
+    def _find_chromium_executable(self) -> Optional[Path]:
+        possible_names = ["chrome", "chromium", "chromium-browser", "chrome.exe"]
+        for root, _, files in os.walk(self.chromium_dir):
+            for file in files:
+                if file in possible_names:
+                    return Path(root) / file
+        return None
+
+    def _find_chromedriver_executable(self) -> Optional[Path]:
+        possible_names = ["chromedriver", "chromedriver.exe"]
+        for root, _, files in os.walk(self.drivers_dir):
+            for file in files:
+                if file in possible_names:
+                    return Path(root) / file
+        return None
+
+    def download_chromium(self) -> bool:
+        platform, arch = self._get_platform_info()
+        if platform not in self.chromium_config["urls"]:
+            logger.error(f"不支持的平台: {platform}")
+            return False
+        if arch not in self.chromium_config["urls"][platform]:
+            logger.error(f"不支持的架构: {arch}")
+            return False
+
+        # 清理旧版本
+        if self.chromium_dir.exists():
+            shutil.rmtree(self.chromium_dir)
+            self.chromium_dir.mkdir()
+
+        url = self.chromium_config["urls"][platform][arch]
+        zip_path = self.browsers_dir / f"chromium_{platform}_{arch}.zip"
+
+        logger.info(f"下载Chromium for {platform} {arch}...")
+        if not self._download_file(url, zip_path):
+            return False
+        if not self._extract_zip(zip_path, self.chromium_dir):
+            return False
+
+        chromium_exe = self._find_chromium_executable()
+        if not chromium_exe:
+            logger.error("未找到Chromium可执行文件")
+            return False
+        self._make_executable(chromium_exe)
+
+        try:
+            zip_path.unlink()
+        except Exception:
+            pass
+        logger.info(f"✅ Chromium安装成功: {chromium_exe}")
+        return True
+
+    def download_chromedriver(self) -> bool:
+        platform, arch = self._get_platform_info()
+        if platform not in self.driver_config["urls"]:
+            logger.error(f"不支持的平台: {platform}")
+            return False
+        if arch not in self.driver_config["urls"][platform]:
+            logger.error(f"不支持的架构: {arch}")
+            return False
+
+        # 清理旧版本
+        if self.drivers_dir.exists():
+            shutil.rmtree(self.drivers_dir)
+            self.drivers_dir.mkdir()
+
+        url = self.driver_config["urls"][platform][arch]
+        zip_path = self.browsers_dir / f"chromedriver_{platform}_{arch}.zip"
+
+        logger.info(f"下载ChromeDriver for {platform} {arch}...")
+        if not self._download_file(url, zip_path):
+            return False
+        if not self._extract_zip(zip_path, self.drivers_dir):
+            return False
+
+        driver_exe = self._find_chromedriver_executable()
+        if not driver_exe:
+            logger.error("未找到ChromeDriver可执行文件")
+            return False
+        self._make_executable(driver_exe)
+
+        try:
+            zip_path.unlink()
+        except Exception:
+            pass
+        logger.info(f"✅ ChromeDriver安装成功: {driver_exe}")
+        return True
+
+    def download_all(self) -> bool:
+        logger.info("开始下载浏览器组件...")
+        ok = True
+        if not self.download_chromium():
+            logger.error("Chromium下载失败")
+            ok = False
+        if not self.download_chromedriver():
+            logger.error("ChromeDriver下载失败")
+            ok = False
+        if ok:
+            self._create_version_info()
+            logger.info("✅ 所有浏览器组件下载完成")
+        else:
+            logger.error("❌ 部分组件下载失败")
+        return ok
+
+    def _create_version_info(self):
+        platform, arch = self._get_platform_info()
+        version_info = {
+            "chromium_version": self.chromium_config["version"],
+            "chromedriver_version": self.driver_config["version"],
+            "platform": platform,
+            "architecture": arch,
+        }
+        version_file = self.browsers_dir / "version.json"
+        with open(version_file, "w", encoding="utf-8") as f:
+            json.dump(version_info, f, indent=2, ensure_ascii=False)
+        logger.info(f"版本信息已保存: {version_file}")
+
+    def is_installed(self) -> bool:
+        return self.get_chromium_path() is not None and self.get_chromedriver_path() is not None
+
+    def get_chromium_path(self) -> Optional[Path]:
+        return self._find_chromium_executable()
+
+    def get_chromedriver_path(self) -> Optional[Path]:
+        return self._find_chromedriver_executable()
