@@ -1,0 +1,19 @@
+{
+  "target_url": "https://www.aicodemirror.com/dashboard",
+  "login": {
+    "username": "",
+    "password": "",
+    "username_selector": "input[name='identifier']",
+    "password_selector": "input[name='password']",
+    "login_button_selector": "button[type='submit']"
+  },
+  "click": {
+    "button_xpath": "/html/body/div[2]/div/div[4]/main/div/div/div/div[2]/div[2]/div[1]/div[2]/div/div[5]/button",
+    "wait_timeout": 20,
+    "click_interval": 300
+  },
+  "browser": {
+    "headless": false,
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+  }
+}
