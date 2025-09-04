@@ -29,12 +29,24 @@ class AutoClicker:
     
     def _get_chromium_path(self) -> str:
         """获取 Chromium 浏览器路径，优先使用项目内的版本"""
-        # 1. 优先检查项目内的 Chromium
+        # 1. 优先使用便携式 Chromium 下载器查找
+        try:
+            from ..utils.browser_downloader import ChromiumDownloader
+            downloader = ChromiumDownloader(self.project_root)
+            portable_path = downloader.get_chromium_path()
+            if portable_path and portable_path.exists() and os.access(portable_path, os.X_OK):
+                logger.info(f"✅ 找到便携式 Chromium: {portable_path}")
+                return str(portable_path)
+        except Exception as e:
+            logger.debug(f"便携式 Chromium 检测失败: {e}")
+        
+        # 2. 手动检查项目内的常见路径
         local_chromium_paths = [
+            self.project_root / "browsers" / "chromium" / "chrome-linux" / "chrome",
+            self.project_root / "browsers" / "chromium" / "chrome-win" / "chrome.exe",
+            self.project_root / "browsers" / "chromium" / "chrome-mac" / "Chromium.app" / "Contents" / "MacOS" / "Chromium",
             self.project_root / "browsers" / "chromium" / "chrome",
-            self.project_root / "browsers" / "chromium-browser",
-            self.project_root / "chromium" / "chrome",
-            self.project_root / "chromium-browser"
+            self.project_root / "chromium" / "chrome"
         ]
         
         for path in local_chromium_paths:
@@ -42,7 +54,7 @@ class AutoClicker:
                 logger.info(f"✅ 找到项目内 Chromium: {path}")
                 return str(path)
         
-        # 2. 检查系统安装的 Chromium
+        # 3. 检查系统安装的 Chromium
         system_chromium_paths = [
             "/usr/bin/chromium-browser",
             "/usr/bin/chromium",

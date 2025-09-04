@@ -187,17 +187,45 @@ class ChromiumDownloader:
             logger.error(f"设置可执行权限失败: {e}")
             return False
     
+    def _find_chromium_by_name(self) -> Optional[Path]:
+        """按文件名查找 Chromium 可执行文件（不检查权限）"""
+        possible_names = ['chrome', 'chromium', 'chromium-browser']
+        
+        logger.info(f"在目录 {self.chromium_dir} 中按文件名查找 Chromium...")
+        
+        for root, dirs, files in os.walk(self.chromium_dir):
+            for file in files:
+                if file in possible_names:
+                    file_path = Path(root) / file
+                    logger.info(f"✅ 按文件名找到 Chromium: {file_path}")
+                    return file_path
+        
+        logger.error("❌ 未找到任何 Chromium 文件")
+        return None
+    
     def _find_chromium_executable(self) -> Optional[Path]:
         """在解压后的文件中查找 Chromium 可执行文件"""
         possible_names = ['chrome', 'chromium', 'chromium-browser']
         
+        logger.info(f"在目录 {self.chromium_dir} 中查找 Chromium 可执行文件...")
+        
         for root, dirs, files in os.walk(self.chromium_dir):
             for file in files:
-                if file in possible_names or file.startswith('chrome'):
+                if file in possible_names:
                     file_path = Path(root) / file
-                    if os.access(file_path, os.X_OK) or file_path.suffix == '.exe':
+                    logger.info(f"找到候选文件: {file_path}")
+                    
+                    # 检查是否可执行
+                    if os.access(file_path, os.X_OK):
+                        logger.info(f"✅ 找到可执行的 Chromium: {file_path}")
                         return file_path
+                    elif file_path.suffix == '.exe':
+                        logger.info(f"✅ 找到 Windows 可执行文件: {file_path}")
+                        return file_path
+                    else:
+                        logger.warning(f"⚠️  文件不可执行: {file_path}")
         
+        logger.error("❌ 未找到任何 Chromium 可执行文件")
         return None
     
     def download_and_install(self) -> bool:
@@ -236,14 +264,18 @@ class ChromiumDownloader:
         if not self._extract_archive(archive_path, self.chromium_dir):
             return False
         
-        # 查找可执行文件
-        chromium_exe = self._find_chromium_executable()
+        # 先按文件名查找，再设置权限
+        chromium_exe = self._find_chromium_by_name()
         if not chromium_exe:
             logger.error("未找到 Chromium 可执行文件")
             return False
         
         # 设置可执行权限
-        self._make_executable(chromium_exe)
+        if not self._make_executable(chromium_exe):
+            logger.error("设置可执行权限失败")
+            return False
+        
+        logger.info(f"已设置可执行权限: {chromium_exe}")
         
         # 清理下载的归档文件
         archive_path.unlink()
